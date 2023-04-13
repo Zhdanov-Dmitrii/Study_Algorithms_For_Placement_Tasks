@@ -24,6 +24,11 @@ set(PROJECT_SOURCES
         Managers/TaskManager/TorusTaskManager.hpp Managers/TaskManager/TorusTaskManager.cpp
         Managers/TaskManager/TreeTaskManager.hpp Managers/TaskManager/TreeTaskManager.cpp
         Managers/TaskManager/TaskManager.hpp Managers/TaskManager/TaskManager.cpp
+
+        Utils/Points/Point2D.hpp Utils/Points/Point3D.hpp
+        Utils/Point2dUtils.hpp Utils/Point2dUtils.cpp
+        Utils/Point3dUtils.hpp Utils/Point3dUtils.cpp
+
         )
 
 add_executable(Diploma ${PROJECT_SOURCES})

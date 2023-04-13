@@ -3,8 +3,15 @@
 
 
 #include <unordered_map>
+#include <functional>
+
 #include "../Domain/Job.hpp"
 #include "TaskManager/TorusTaskManager.hpp"
+#include "../Utils/Point2dUtils.hpp"
+#include "../Utils/Point3dUtils.hpp"
+#include "../Utils/Points/Point3D.hpp"
+#include "../Utils/Points/Point2D.hpp"
+
 
 class JobManager {
     ///Singleton
@@ -19,8 +26,8 @@ class JobManager {
 
     void createFullJob(Job& job, int countP2pMessage, unsigned long cost);
     void createStarJob(Job& job, int countP2pMessage, unsigned long cost);
-    void createGridJob(Job& job, int countP2pMessage, unsigned long cost);
-    void createCubeJob(Job& job, int countP2pMessage, unsigned long cost);
+    void createGridJob(Job &job, int countP2pMessage, unsigned long cost) ;
+    void createCubeJob(Job& job, int countP2pMessages, unsigned long cost);
     void createTreeJob(Job& job, int countP2pMessage, unsigned long cost);
 
     using JobType = Job::JobType;

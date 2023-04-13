@@ -25,13 +25,13 @@ void TaskManager::createTaskInSimplePlacementMode(Job job, Topology &topology) {
     }
 
     int indTask = 0;
-    for(int i = 0; i < topology.getHosts(); ++i) {
+    for(int i = 0; i < topology.getHosts() && indTask < jobPtr->processes; ++i) {
         if(topology.isFreeHost(i)) {
             tasks[indTask++].setHostName(topology.getHost(i));
             topology.removeFreeHost(i);
         }
     }
-    if (indTask != job.processes) {
+    if (indTask != jobPtr->processes) {
         throw std::out_of_range("There is no place to place the task in the topology");
     }
 
@@ -91,28 +91,108 @@ void TaskManager::fillActionsForStar(std::vector<Task> &tasks) {
         return;
     }
     int countMessage = job->messages[0][0].count;
+    unsigned long cost = job->messages[0][0].cost;
 
     for (; countMessage >= 0; --countMessage) {
         ///Отправляем сообщение от мастер ноды
         for (int indTask = 1; indTask < job->processes; ++indTask) {
-            tasks[0].addAction({idAction++, ActionType::PUT, tasks[indTask].getHostName(), job->messages[0][indTask].cost});
-            tasks[indTask].addAction({idAction++, ActionType::GET, tasks[0].getHostName(), job->messages[indTask][0].cost});
+            addAction(tasks, 0, indTask, cost);
         }
 
         ///Мастер нода получает сообщения
         for (int indTask = 1; indTask < job->processes; ++indTask) {
-            tasks[indTask].addAction({idAction++, ActionType::PUT, tasks[0].getHostName(), job->messages[indTask][0].cost});
-            tasks[0].addAction({idAction++, ActionType::GET, tasks[indTask].getHostName(), job->messages[0][indTask].cost});
+            addAction(tasks, indTask,  0, cost);
         }
     }
 }
 
 void TaskManager::fillActionsForGrid(std::vector<Task> &tasks) {
+    auto& job = tasks[0].getJob();
 
+    if (job->messages.empty() || job->messages[0].empty()) {
+        return;
+    }
+
+    ///Если между тасками будет разное кол-во сообщений, надо будет переписать
+    int countMessage = job->messages[0][0].count;
+    unsigned long cost = job->messages[0][0].cost;
+    
+    for (; countMessage >- 0; -- countMessage) {
+        int n = sqrt(job->processes);
+        for (int x = 0; x < n; ++x) {
+            int y = 0;
+            auto setAction = [x,y,n, cost, &tasks]
+                    (Point2D (*func)(const Point2D &, const Point2D &, const Point2D &)) {
+                auto getNum = [n](const Point2D& p) -> int { return p.x + n * p.y; };
+
+                Point2D neighbor = func({x,y}, {n-1,n-1}, {0,0});
+                TaskManager::addAction(tasks, getNum({x,y}), getNum(neighbor), cost);
+            };
+
+            ///По четным y
+            for (y = x % 2; y < n; y += 2) {
+                setAction(Point2dUtils::getUpPoint);
+                setAction(Point2dUtils::getDownPoint);
+                setAction(Point2dUtils::getLeftPoint);
+                setAction(Point2dUtils::getRightPoint);
+            }
+            
+            ///По нечетным y
+            for (y = x % 2 + 1; y < n; y += 2) {
+                setAction(Point2dUtils::getUpPoint);
+                setAction(Point2dUtils::getDownPoint);
+                setAction(Point2dUtils::getLeftPoint);
+                setAction(Point2dUtils::getRightPoint);
+            }
+        }
+    }
 }
 
 void TaskManager::fillActionsForCube(std::vector<Task> &tasks) {
+    auto& job = tasks[0].getJob();
 
+    if (job->messages.empty() || job->messages[0].empty()) {
+        return;
+    }
+
+    ///Если между тасками будет разное кол-во сообщений, надо будет переписать
+    int countMessage = job->messages[0][0].count;
+    unsigned long cost = job->messages[0][0].cost;
+    for (; countMessage >- 0; -- countMessage) {
+        int n = cbrt(job->processes);
+        for (int x = 0; x < n; ++x) {
+            for (int y = 0; y < n; ++y) {
+                int z;
+                auto setAction = [x,y,z,n, cost, &tasks]
+                        (Point3D (*func)(const Point3D &, const Point3D &, const Point3D &)) {
+                    auto getNum = [n](const Point3D& p) -> int { return p.x + n * p.y + n*n*p.z; };
+
+                    Point3D neighbor = func({x,y,z}, {n-1,n-1,n-1}, {0,0,0});
+                    TaskManager::addAction(tasks, getNum({x,y,z}), getNum(neighbor), cost);
+                };
+
+                ///По четным z
+                for (z = x % 2; z < n; z += 2) {
+                    setAction(Point3dUtils::getUpPoint);
+                    setAction(Point3dUtils::getDownPoint);
+                    setAction(Point3dUtils::getLeftPoint);
+                    setAction(Point3dUtils::getRightPoint);
+                    setAction(Point3dUtils::getBehindPoint);
+                    setAction(Point3dUtils::getBeforePoint);
+                }
+
+                ///По нечетным z
+                for (z = x % 2 + 1; z < n; z += 2) {
+                    setAction(Point3dUtils::getUpPoint);
+                    setAction(Point3dUtils::getDownPoint);
+                    setAction(Point3dUtils::getLeftPoint);
+                    setAction(Point3dUtils::getRightPoint);
+                    setAction(Point3dUtils::getBehindPoint);
+                    setAction(Point3dUtils::getBeforePoint);
+                }
+            }
+        }
+    }
 }
 
 void TaskManager::fillActionsForTree(std::vector<Task> &tasks) {
@@ -123,4 +203,9 @@ void TaskManager::addTasks(std::vector<Task> &tasks) {
     for (auto& task : tasks) {
         data.emplace(task.getId(), std::move(task));
     }
+}
+
+void TaskManager::addAction(std::vector<Task> &tasks, int taskSender, int taskReciever, unsigned long cost) {
+    tasks[taskSender].addAction({idAction++, ActionType::PUT, tasks[taskReciever].getHostName(), cost});
+    tasks[taskReciever].addAction({idAction++, ActionType::GET, tasks[taskSender].getHostName(), cost});
 }

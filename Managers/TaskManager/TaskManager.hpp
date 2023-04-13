@@ -2,9 +2,12 @@
 #define DIPLOMA_TASKMANAGER_HPP
 
 #include <unordered_map>
+
 #include "../../Domain/Topology/Topology.hpp"
 #include "../SimGridManager.hpp"
 #include "../../Domain/Task.hpp"
+#include "../../Utils/Point2dUtils.hpp"
+#include "../../Utils/Point3dUtils.hpp"
 
 class SimGridManager;
 
@@ -34,6 +37,8 @@ protected:
     void fillActionsForCube(std::vector<Task>& tasks);
     void fillActionsForTree(std::vector<Task>& tasks);
     void fillActionsForFull(std::vector<Task>& tasks);
+
+    static void addAction(std::vector<Task>& tasks,int taskSender, int taskReciever, unsigned long cost);
 
     void addTasks(std::vector<Task>& tasks);
 public:

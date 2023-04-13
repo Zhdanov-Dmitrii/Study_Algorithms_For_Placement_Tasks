@@ -4,7 +4,7 @@
     <zone id="world" routing="DijkstraCache">
         <cluster id="bob_cluster" topology="TORUS" topo_parameters="8, 8, 8"
                  prefix="torusNode-" radical="0-511" suffix=""
-                 speed="1Gf" bw="12MBps" lat="500us"
+                 speed="1Gf" bw="12MBps" lat="5000us"
                  loopback_bw="12MBps" loopback_lat="500us"/>
     </zone>
 </platform>
