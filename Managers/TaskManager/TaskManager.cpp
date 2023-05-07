@@ -1,21 +1,25 @@
+#include <iostream>
 #include "TaskManager.hpp"
 
-TaskManager::TaskManager() : simGridManager(SimGridManager::getInstance()) {
+TaskManager::TaskManager() {
 }
 
-const std::unordered_map<int, Task> &TaskManager::getAll() {
-    return data;
+const std::unordered_map<unsigned long long int, std::shared_ptr<Job>> & TaskManager::getAllJobs() {
+    return jobs;
+}
+
+const std::map<unsigned long long int, Task> & TaskManager::getAllTasks() {
+    return tasks;
 }
 
 void TaskManager::updateTimeTask(const Task &task) {
-    data[task.getId()].setTime(task.getTime());
+    tasks[task.getId()].setTime(task.getTime());
     for (auto& [id, action] : task.getActions()) {
-        data[task.getId()].getActions()[id].time = action.time;
+        tasks[task.getId()].getActions()[id].time = action.time;
     }
 }
 
-void TaskManager::createTaskInSimplePlacementMode(Job job, Topology &topology) {
-    auto jobPtr = std::make_shared<Job>(std::move(job));
+void TaskManager::createTaskInSimplePlacementMode(std::shared_ptr<Job>& jobPtr, Topology &topology) {
     std::vector<Task> tasks;
     tasks.reserve(jobPtr->processes);
     for(int i = 0; i <jobPtr->processes; ++i) {
@@ -39,8 +43,7 @@ void TaskManager::createTaskInSimplePlacementMode(Job job, Topology &topology) {
     addTasks(tasks);
 }
 
-void TaskManager::createTaskInRandomPlacementMode(Job job, Topology &topology) {
-    auto jobPtr = std::make_shared<Job>(std::move(job));
+void TaskManager::createTaskInRandomPlacementMode(std::shared_ptr<Job>& jobPtr, Topology &topology) {
     std::vector<Task> tasks;
     tasks.reserve(jobPtr->processes);
     for(int i = 0; i <jobPtr->processes; ++i) {
@@ -50,6 +53,9 @@ void TaskManager::createTaskInRandomPlacementMode(Job job, Topology &topology) {
     }
 
     for (auto &task : tasks){
+        if (topology.getFreeHosts().empty()) {
+            std::cout << "no free hosts\n";
+        }
         int indRandHost = topology.getRandomFreeHost();
         task.setHostName(topology.getHost(indRandHost));
         topology.removeFreeHost(indRandHost);
@@ -62,26 +68,93 @@ void TaskManager::createTaskInRandomPlacementMode(Job job, Topology &topology) {
 void TaskManager::fillActions(std::vector<Task> &tasks) {
     if (tasks.empty()) return;
 
-    switch (tasks[0].getJob()->jobType) {
-        case JobType::STAR:
-            fillActionsForStar(tasks);
-            break;
-        case JobType::GRID:
-            fillActionsForGrid(tasks);
-            break;
-        case JobType::CUBE:
-            fillActionsForCube(tasks);
-            break;
-        case JobType::TREE:
-            fillActionsForTree(tasks);
-            break;
-        default:
-            fillActionsForFull(tasks);
+    auto& job = tasks[0].getJob();
+    if (job->messages.empty() || job->messages[0].empty()){
+        return;
     }
+    if (job->jobType != JobType::CUBE) {
+        for (int countMessage = job->messages[0][0].count; countMessage >= 0; --countMessage) {
+            for (int i = 0; i < job->processes; ++i) {
+                for (auto &msg: job->messages[i]) {
+                    addAction(tasks, i, msg.process, msg.cost);
+                }
+            }
+        }
+    } else {
+        for (int countMessage = job->messages[0][0].count; countMessage >- 0; -- countMessage) {
+            auto cost = job->messages[0][0].cost;
+            int n = cbrt(job->processes);
+            for (int x = 0; x < n; ++x) {
+                for (int y = 0; y < n; ++y) {
+                    int z = 0;
+                    auto getNum = [n](const Point3D& p) -> int { return p.x + n * p.y + n*n*p.z; };
+
+                    ///По четным z
+                    for (z = x % 2; z < n; z += 2) {
+                        for (auto &msg: job->messages[getNum({x,y,z})]) {
+                            addAction(tasks, getNum({x,y,z}), msg.process, msg.cost);
+                        }
+                    }
+
+                    ///По нечетным z
+                    for (z = x % 2 + 1; z < n; z += 2) {
+                        for (auto &msg: job->messages[getNum({x,y,z})]) {
+                            addAction(tasks, getNum({x,y,z}), msg.process, msg.cost);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
 
+
+
+//
+//    switch (tasks[0].getJob()->jobType) {
+//        case JobType::STAR:
+//            fillActionsForStar(tasks);
+//            break;
+//        case JobType::GRID:
+//            fillActionsForGrid(tasks);
+//            break;
+//        case JobType::CUBE:
+//            fillActionsForCube(tasks);
+//            break;
+//        case JobType::TREE:
+//            fillActionsForTree(tasks);
+//            break;
+//        default:
+//            fillActionsForFull(tasks);
+//    }
+//}
+
 void TaskManager::fillActionsForFull(std::vector<Task> &tasks) {
-    //todo: Сложно, думать надо...
+    auto& job = tasks[0].getJob();
+
+    if (job->messages.empty() || job->messages[0].empty()){
+        return;
+    }
+
+    int countMessage = job->messages[0][0].count;
+    unsigned long cost = job->messages[0][0].cost;
+    for (; countMessage >= 0; --countMessage) {
+
+        for (int indTask = 0; indTask < job->processes; ++indTask) {
+            for (int i = 0; i < job->processes; ++i) {
+                if (i == indTask) continue;
+                addAction(tasks, indTask, i, cost);
+            }
+
+            for (int i = 0; i < job->processes; ++i) {
+                if (i == indTask) continue;
+                addAction(tasks, i, indTask, cost);
+            }
+        }
+    }
+
+
 }
 
 void TaskManager::fillActionsForStar(std::vector<Task> &tasks) {
@@ -162,7 +235,7 @@ void TaskManager::fillActionsForCube(std::vector<Task> &tasks) {
         int n = cbrt(job->processes);
         for (int x = 0; x < n; ++x) {
             for (int y = 0; y < n; ++y) {
-                int z;
+                int z = 0;
                 auto setAction = [x,y,z,n, cost, &tasks]
                         (Point3D (*func)(const Point3D &, const Point3D &, const Point3D &)) {
                     auto getNum = [n](const Point3D& p) -> int { return p.x + n * p.y + n*n*p.z; };
@@ -196,16 +269,83 @@ void TaskManager::fillActionsForCube(std::vector<Task> &tasks) {
 }
 
 void TaskManager::fillActionsForTree(std::vector<Task> &tasks) {
+    auto& job = tasks[0].getJob();
+
+    if (job->messages.empty() || job->messages[0].empty()) {
+        return;
+    }
+    int countMessage = job->messages[0][0].count;
+
+    for (; countMessage >= 0; --countMessage) {
+        fillTree(tasks, 0, true);
+        fillTree(tasks, 0, false);
+    }
 
 }
 
 void TaskManager::addTasks(std::vector<Task> &tasks) {
     for (auto& task : tasks) {
-        data.emplace(task.getId(), std::move(task));
+        this->tasks.emplace(task.getId(), std::move(task));
     }
 }
 
 void TaskManager::addAction(std::vector<Task> &tasks, int taskSender, int taskReciever, unsigned long cost) {
     tasks[taskSender].addAction({idAction++, ActionType::PUT, tasks[taskReciever].getHostName(), cost});
     tasks[taskReciever].addAction({idAction++, ActionType::GET, tasks[taskSender].getHostName(), cost});
+}
+
+void TaskManager::calcJobTime() {
+    for (auto &[id, task] : tasks) {
+        task.getJob()->time = std::max(task.getJob()->time, task.getTime());
+    }
+}
+
+void TaskManager::removeInvalidJobs() {
+    std::vector<int> remId;
+    for(auto &[id, job] : jobs)
+        if(!job->isValid)
+            remId.push_back(id);
+
+    for(auto id : remId)
+        jobs.erase(id);
+
+    remId.clear();
+    for (auto &[id, task] : tasks)
+        if(!task.getJob()->isValid)
+            remId.push_back(id);
+
+    for(auto id : remId)
+        tasks.erase(id);
+
+}
+
+void TaskManager::fillTree(std::vector<Task> &tasks, int x, bool flag) {
+    auto& job = tasks[0].getJob();
+
+    auto getParent = [](int x) -> int { return x / 2 - 1 + x % 2; };
+    auto getLeftChild = [](int x) -> int { return x * 2 + 1; };
+    auto getRightChild = [](int x) -> int { return x * 2 + 2; };
+
+    unsigned long cost = job->messages[0][0].cost;
+
+    if (flag) {
+        if (x != 0){
+            addAction(tasks, x, getParent(x), cost);
+        }
+
+        if (getLeftChild(x) < job->processes) {
+            addAction(tasks, x, getLeftChild(x), cost);
+        }
+
+        if (getRightChild(x) < job->processes) {
+            addAction(tasks, x, getRightChild(x), cost);
+        }
+    }
+
+    if (getLeftChild(x) < job->processes) {
+        fillTree(tasks, getLeftChild(x), !flag);
+    }
+    if (getRightChild(x) < job->processes) {
+        fillTree(tasks, getRightChild(x), !flag);
+    }
 }

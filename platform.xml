@@ -2,9 +2,19 @@
 <!DOCTYPE platform SYSTEM "https://simgrid.org/simgrid.dtd">
 <platform version="4.1">
     <zone id="world" routing="DijkstraCache">
-        <cluster id="bob_cluster" topology="TORUS" topo_parameters="8, 8, 8"
-                 prefix="torusNode-" radical="0-511" suffix=""
-                 speed="1Gf" bw="12MBps" lat="5000us"
-                 loopback_bw="12MBps" loopback_lat="500us"/>
+        <cluster id="bob_cluster" topology="TORUS" topo_parameters="16, 16, 16"
+                 prefix="torusNode-" radical="0-4095" suffix=""
+                 speed="1Gf" bw="125MBps" lat="50us"
+                 loopback_bw="125MBps" loopback_lat="100us"/>
+
+        <cluster id="FATTREE" topology="FAT_TREE" topo_parameters="6;4,4,4,4,4,4;1,4,4,4,4,4;1,1,1,1,1,1"
+        prefix="fatTree-" radical="0-4095" suffix=""
+        speed="1Gf" bw="125MBps" lat="50us"
+        loopback_bw="125MBps" loopback_lat="100us"/>
+
+        <cluster id="THIN_TREE" topology="FAT_TREE" topo_parameters="6;4,4,4,4,4,4;1,2,2,2,2,2;1,1,1,1,1,1"
+                 prefix="thinTree-" radical="0-4095" suffix=""
+                 speed="1Gf" bw="125MBps" lat="50us"
+                 loopback_bw="125MBps" loopback_lat="100us"/>
     </zone>
 </platform>

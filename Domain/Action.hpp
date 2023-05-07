@@ -14,7 +14,7 @@ struct Action {
         GET, PUT
     };
 
-    int id;
+    unsigned long long id;
     ActionType actionType;
     std::string hostName;
     unsigned long cost;

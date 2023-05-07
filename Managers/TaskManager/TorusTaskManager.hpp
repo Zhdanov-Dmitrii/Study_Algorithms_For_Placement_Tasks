@@ -2,6 +2,9 @@
 #define DIPLOMA_TORUSTASKMANAGER_H
 
 
+#include <list>
+#include <algorithm>
+
 #include "../../Domain/Topology/TorusTopology.hpp"
 #include "TaskManager.hpp"
 
@@ -13,13 +16,15 @@ class TorusTaskManager : public TaskManager {
 
     TorusTopology torusTopology;
 protected:
-    void createTaskInOptimalPlacementMode(Job job, Topology& topology) override;
-    void createTaskInAdvancedPlacementMode(Job job, Topology& topology) override;
+    void createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
+    void createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
 
 public:
     static TorusTaskManager& getInstance();
 
-    virtual void createTasks(const Job& job) override;
+    void createTasks(Job job) override;
+
+    void clear() override;
 };
 
 

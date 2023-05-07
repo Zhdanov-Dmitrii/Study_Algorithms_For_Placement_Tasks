@@ -8,7 +8,10 @@ TorusTopology::TorusTopology(const std::string_view prefix, const std::string_vi
 }
 
 void TorusTopology::buildHilbertCurve() {
-
+    calcHilbertCurve(0,0,0,
+                     sizeX, 0, 0,
+                     0, sizeY, 0,
+                     0, 0, sizeZ);
 }
 
 int TorusTopology::getHostNumber(int x, int y, int z) {
@@ -178,4 +181,20 @@ void TorusTopology::calcHilbertCurve(int x, int y, int z,
                          cx2, cy2, cz2,
                          -(ax - ax2), -(ay - ay2), -(az - az2));
     }
+}
+
+const std::vector<int> &TorusTopology::getHilbertCurve() const {
+    return hilbertCurve;
+}
+
+bool TorusTopology::isFreeHostByNumHilbert(int i) {
+    return isFreeHost(hilbertCurve[i]);
+}
+
+std::string_view TorusTopology::getHostByNumHilbert(int i) {
+    return getHost(hilbertCurve[i]);
+}
+
+int TorusTopology::getHostNumByNumHilbert(int i) {
+    return hilbertCurve[i];
 }

@@ -5,7 +5,7 @@ Point3D Point3dUtils::getUpPoint(const Point3D &point, const Point3D &rPoint, co
     res.x = point.x;
     res.y = point.y > lPoint.y ? point.y - 1 : rPoint.y;
     res.z = point.z;
-    return point;
+    return res;
 }
 
 Point3D Point3dUtils::getDownPoint(const Point3D &point, const Point3D &rPoint, const Point3D &lPoint) {

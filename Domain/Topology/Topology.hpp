@@ -11,6 +11,7 @@
 #include <random>
 
 class Topology {
+protected:
     std::string prefix;
     std::string suffix;
     int hosts;
@@ -30,7 +31,7 @@ public:
 
     const std::unordered_set<int>& getFreeHosts() const;
 
-    void removeFreeHost(int host);
+    virtual void removeFreeHost(int host);
 
     bool isFreeHost(int host);
 

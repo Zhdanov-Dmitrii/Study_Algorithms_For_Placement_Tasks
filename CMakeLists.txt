@@ -3,6 +3,8 @@ project(Diploma)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
@@ -18,18 +20,21 @@ set(PROJECT_SOURCES
         Domain/Action.hpp
         Domain/Topology/Topology.hpp Domain/Topology/Topology.cpp
         Domain/Topology/TorusTopology.hpp Domain/Topology/TorusTopology.cpp
+        Domain/Topology/TreeTopology.hpp  Domain/Topology/TreeTopology.cpp
 
         Managers/JobManager.hpp Managers/JobManager.cpp
         Managers/SimGridManager.hpp Managers/SimGridManager.cpp
         Managers/TaskManager/TorusTaskManager.hpp Managers/TaskManager/TorusTaskManager.cpp
         Managers/TaskManager/TreeTaskManager.hpp Managers/TaskManager/TreeTaskManager.cpp
         Managers/TaskManager/TaskManager.hpp Managers/TaskManager/TaskManager.cpp
+        Managers/DeployManager.hpp Managers/DeployManager.cpp
 
+        Utils/json.hpp
         Utils/Points/Point2D.hpp Utils/Points/Point3D.hpp
         Utils/Point2dUtils.hpp Utils/Point2dUtils.cpp
         Utils/Point3dUtils.hpp Utils/Point3dUtils.cpp
 
-        )
+        Managers/TopologyManager.cpp)
 
 add_executable(Diploma ${PROJECT_SOURCES})
 target_link_libraries(Diploma ${SimGrid_LIBRARY})

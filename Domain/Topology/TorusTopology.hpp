@@ -23,9 +23,13 @@ class TorusTopology : public Topology {
                           int bx, int by, int bz,
                           int cx, int cy, int cz); // Очень страшно
 public:
-    TorusTopology(const std::string_view prefix, const std::string_view suffix, int sizeX, int sizeY, int sizeZ);
+    TorusTopology(std::string_view prefix, std::string_view suffix, int sizeX, int sizeY, int sizeZ);
 
     int getHostNumber(int x, int y, int z);
+    const std::vector<int>& getHilbertCurve() const;
+    bool isFreeHostByNumHilbert(int i);
+    std::string_view getHostByNumHilbert(int i);
+    int getHostNumByNumHilbert(int i);
 };
 
 

@@ -3,6 +3,7 @@
 
 #include <simgrid/s4u.hpp>
 #include "TaskManager/TaskManager.hpp"
+#include "TaskManager/TorusTaskManager.hpp"
 #include "../Domain/Task.hpp"
 
 class SimGridManager {
@@ -10,6 +11,8 @@ class SimGridManager {
     SimGridManager();
     SimGridManager(SimGridManager&);
     SimGridManager& operator=(SimGridManager&);
+
+    TorusTaskManager& torusTaskManager;
 
     simgrid::s4u::Engine* engine = simgrid::s4u::Engine::get_instance();
 public:
@@ -19,7 +22,7 @@ public:
 
     void run();
 
-    void calcResult();
+    void killAllActor();
 };
 
 

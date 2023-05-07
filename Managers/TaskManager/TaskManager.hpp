@@ -4,32 +4,28 @@
 #include <unordered_map>
 
 #include "../../Domain/Topology/Topology.hpp"
-#include "../SimGridManager.hpp"
 #include "../../Domain/Task.hpp"
 #include "../../Utils/Point2dUtils.hpp"
 #include "../../Utils/Point3dUtils.hpp"
 
-class SimGridManager;
-
 class TaskManager {
-
-    inline static std::unordered_map<int, Task> data;
-
 protected:
     TaskManager();
 
     using PlacementMode = Job::PlacementMode;
     using JobType = Job::JobType;
     using ActionType = Action::ActionType;
-    SimGridManager& simGridManager;
 
-    inline static int idTask;
-    inline static int idAction;
+    inline static unsigned long long idTask;
+    inline static unsigned long long idAction;
 
-    void createTaskInSimplePlacementMode(Job job, Topology& topology);
-    virtual void createTaskInOptimalPlacementMode(Job job, Topology& topology) = 0;
-    virtual void createTaskInAdvancedPlacementMode(Job job, Topology& topology) = 0;
-    void createTaskInRandomPlacementMode(Job job, Topology& topology);
+    inline static std::map<unsigned long long, Task> tasks;
+    inline static std::unordered_map<unsigned long long, std::shared_ptr<Job>> jobs; //todo разные айди для
+
+    void createTaskInSimplePlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology);
+    virtual void createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) = 0;
+    virtual void createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) = 0;
+    void createTaskInRandomPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology);
 
     void fillActions(std::vector<Task>& tasks);
     void fillActionsForStar(std::vector<Task>& tasks);
@@ -40,13 +36,23 @@ protected:
 
     static void addAction(std::vector<Task>& tasks,int taskSender, int taskReciever, unsigned long cost);
 
+    static void fillTree(std::vector<Task>& tasks, int x, bool flag);
+
     void addTasks(std::vector<Task>& tasks);
 public:
-    static const std::unordered_map<int, Task>& getAll();
+    static const std::map<unsigned long long int, Task> & getAllTasks();
 
-    virtual void createTasks(const Job& job) = 0;
+    static const std::unordered_map<unsigned long long int, std::shared_ptr<Job>> & getAllJobs();
+
+    virtual void createTasks(Job job) = 0;
 
     static void updateTimeTask(const Task& task);
+
+    static void calcJobTime();
+
+    virtual void clear() = 0;
+
+    static void removeInvalidJobs();
 };
 
 

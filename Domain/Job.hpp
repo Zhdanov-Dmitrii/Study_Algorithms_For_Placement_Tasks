@@ -1,7 +1,3 @@
-//
-// Created by user on 30.03.23.
-//
-
 #ifndef DIPLOMA_JOB_HPP
 #define DIPLOMA_JOB_HPP
 
@@ -36,8 +32,10 @@ public:
     int processes;
     JobType jobType;
     PlacementMode placementMode;
+    bool isValid;
     std::vector<std::vector<Messages>> messages;
     double time = -1;
+    std::string path;
 
 
 };

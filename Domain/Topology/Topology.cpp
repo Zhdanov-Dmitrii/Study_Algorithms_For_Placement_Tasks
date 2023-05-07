@@ -7,6 +7,8 @@
 Topology::Topology(const std::string_view prefix, const std::string_view suffix, int hosts)
         : prefix(prefix), suffix(suffix), hosts(hosts) {
 
+    freeHosts.clear();
+    freeHosts.reserve(this->hosts);
     hostNames.reserve(this->hosts);
     for (int i = 0; i < hosts; ++i) {
         hostNames.push_back(this->prefix + std::to_string(i) + this->suffix);

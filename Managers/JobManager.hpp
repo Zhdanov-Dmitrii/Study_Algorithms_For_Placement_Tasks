@@ -4,9 +4,13 @@
 
 #include <unordered_map>
 #include <functional>
+#include <algorithm>
 
 #include "../Domain/Job.hpp"
 #include "TaskManager/TorusTaskManager.hpp"
+#include "TaskManager/TreeTaskManager.hpp"
+
+#include "SimGridManager.hpp"
 #include "../Utils/Point2dUtils.hpp"
 #include "../Utils/Point3dUtils.hpp"
 #include "../Utils/Points/Point3D.hpp"
@@ -19,10 +23,12 @@ class JobManager {
     JobManager(const JobManager &) = delete;
     JobManager &operator=(JobManager &) = delete;
 
-    std::unordered_map<int, Job> jobs;
+    std::map<int, Job> jobs;
     TorusTaskManager& torusTaskManager;
+    TreeTaskManager& treeTaskManager;
     SimGridManager& simGridManager;
 
+    inline static int idJob = 0;
 
     void createFullJob(Job& job, int countP2pMessage, unsigned long cost);
     void createStarJob(Job& job, int countP2pMessage, unsigned long cost);
@@ -32,12 +38,27 @@ class JobManager {
 
     using JobType = Job::JobType;
     using PlacementMode = Job::PlacementMode;
+
+    void fillTree(Job& job, int i, int countP2pMessage, unsigned long cost);
 public:
+    enum TopologyType {
+        TORUS_TOPOLOGY,
+        FAT_TREE_TOPOLOGY,
+        THIN_TREE_TOPOLOGY
+    };
+
     static JobManager& getInstance();
 
-    void createJob(JobType jobType, PlacementMode placementMode, int processes, int countP2pMessage, unsigned long cost);
+    void createJob(JobType jobType, PlacementMode placementMode, bool isValid, int processes,
+                   int countP2pMessage, unsigned long cost, std::string_view path);
 
-    void run();
+    void run(TopologyType topologyType);
+
+    void clear();
+
+    void removeInvalidJob();
+
+
 };
 
 

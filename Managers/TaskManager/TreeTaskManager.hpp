@@ -2,14 +2,28 @@
 #define DIPLOMA_TREETASKMANAGER_H
 
 
-class TreeTaskManager {
+#include "../../Domain/Topology/Topology.hpp"
+#include "../../Domain/Topology/TreeTopology.hpp"
+#include "TaskManager.hpp"
+
+class TreeTaskManager : public TaskManager{
     ///Singleton
-    TreeTaskManager() = default;
+    TreeTaskManager();
     TreeTaskManager(const TreeTaskManager&) = default;
     TreeTaskManager& operator=(TreeTaskManager&) = default;
 
+    using Switch = TreeTopology::Switch;
+    TreeTopology treeTopology;
+
+    void place(std::weak_ptr<Switch> sw, int nodes, int &indTask, TreeTopology& tree, std::vector<Task>& tasks);
+
+protected:
+    void createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
+    void createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
 public:
-    TreeTaskManager& getInstance();
+    static TreeTaskManager& getInstance();
+    void createTasks(Job job) override;
+    void clear() override;
 };
 
 

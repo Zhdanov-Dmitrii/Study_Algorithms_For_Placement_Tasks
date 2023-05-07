@@ -12,16 +12,16 @@
 #include "Job.hpp"
 
 class Task {
-    const int id;
+    const unsigned long long id;
     std::string hostName;
-    std::map<int, Action> actions;
+    std::map<unsigned long long, Action> actions;
     std::shared_ptr<Job> job;
     double time = -1;
 
     void callback() const;
 public:
     Task();
-    Task(int id);
+    Task(unsigned long long id);
 
     void operator()();
 
@@ -34,8 +34,8 @@ public:
 
     int getId() const;
     double getTime() const;
-    std::map<int, Action>& getActions();
-    const std::map<int, Action>& getActions() const;
+    std::map<unsigned long long int, Action> & getActions();
+    const std::map<unsigned long long, Action> & getActions() const;
     const std::shared_ptr<Job>& getJob() const;
 
 };

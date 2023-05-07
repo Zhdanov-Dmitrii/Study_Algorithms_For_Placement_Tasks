@@ -1,7 +1,9 @@
+#include <iostream>
 #include "JobManager.hpp"
 
 JobManager::JobManager()
     : torusTaskManager(TorusTaskManager::getInstance()),
+      treeTaskManager(TreeTaskManager::getInstance()),
       simGridManager(SimGridManager::getInstance()) {
 
 }
@@ -11,14 +13,18 @@ JobManager& JobManager::getInstance() {
     return instance;
 }
 
-void JobManager::createJob(Job::JobType jobType, PlacementMode placementMode, int processes, int countP2pMessage, unsigned long cost) {
-    static int id;
+void JobManager::createJob(JobType jobType, PlacementMode placementMode, bool isValid, int processes,
+                           int countP2pMessage, unsigned long cost, std::string_view path) {
+    if (processes == 0)
+        return;
 
     Job job;
-    job.id = id++;
+    job.id = idJob++;
+    job.isValid = isValid;
     job.processes = processes;
     job.jobType = jobType;
     job.placementMode = placementMode;
+    job.path = path;
 
     switch (jobType) {
         case JobType::STAR:
@@ -39,13 +45,20 @@ void JobManager::createJob(Job::JobType jobType, PlacementMode placementMode, in
     jobs.emplace(job.id ,std::move(job));
 }
 
-void JobManager::run() {
+void JobManager::run(TopologyType topologyType) {
+    TaskManager& manager = torusTaskManager;
+    switch (topologyType) {
+        case TopologyType::TORUS_TOPOLOGY: manager = torusTaskManager;
+        case TopologyType::FAT_TREE_TOPOLOGY: manager = treeTaskManager;
+    }
+
     for (auto &[id, job] : jobs) {
-        torusTaskManager.createTasks(job);
+        manager.createTasks(job);
     }
 
     simGridManager.registerTasks();
     simGridManager.run();
+    TaskManager::calcJobTime();
 }
 
 void JobManager::createFullJob(Job &job, int countP2pMessage, unsigned long cost) {
@@ -97,7 +110,7 @@ void JobManager::createGridJob(Job &job, int countP2pMessage, unsigned long cost
 void JobManager::createCubeJob(Job &job, int countP2pMessages, unsigned long cost) {
     auto& messages = job.messages;
     messages.resize(job.processes);
-    int n = cbrt(job.processes);
+    int n = std::round(cbrt(job.processes));
 
     for (int x = 0; x < n; ++x) {
         for (int y = 0; y < n; ++y) {
@@ -106,7 +119,7 @@ void JobManager::createCubeJob(Job &job, int countP2pMessages, unsigned long cos
                 auto setMsg = [&messages, n, x, y, z, countP2pMessages, cost]
                         (Point3D (*func)(const Point3D &, const Point3D &, const Point3D &)) {
                     auto getNum = [n](const Point3D& p) {return p.x + p.y * n + p.z * n * n;};
-                    Point3D neighbor = func({x, y}, {n-1,n-1,n-1}, {0,0,0});
+                    Point3D neighbor = func({x, y, z}, {n-1,n-1,n-1}, {0,0,0});
                     messages[getNum({x,y,z})].push_back({getNum(neighbor), countP2pMessages, cost});
                 };
 
@@ -123,6 +136,50 @@ void JobManager::createCubeJob(Job &job, int countP2pMessages, unsigned long cos
 }
 
 void JobManager::createTreeJob(Job &job, int countP2pMessage, unsigned long cost) {
+    auto& messages = job.messages;
+    messages.resize(job.processes);
+
+    fillTree(job, 0, countP2pMessage, cost);
+}
+
+void JobManager::clear() {
+    idJob = 0;
+    jobs.clear();
+}
+
+void JobManager::removeInvalidJob() {
+    std::vector<int> remId;
+    for (auto &[id, job] : jobs) {
+        if (!job.isValid) {
+            remId.push_back(id);
+        }
+    }
+
+    for(auto id : remId)
+        jobs.erase(id);
+}
+
+void JobManager::fillTree(Job &job, int i, int countP2pMessage, unsigned long cost) {
+    auto getParent = [](int x) { return x / 2 - 1 + x % 2; };
+    auto getLeftChild = [](int x) { return x * 2 + 1; };
+    auto getRightChild = [](int x) { return x * 2 + 2; };
+
+    int lChild = getLeftChild(i);
+    int rChild = getRightChild(i);
+
+    if (i != 0) {
+        job.messages[i].push_back({getParent(i), countP2pMessage, cost});
+    }
+
+    if (lChild < job.processes) {
+        job.messages[i].push_back({lChild, countP2pMessage, cost});
+        fillTree(job, lChild, countP2pMessage, cost);
+    }
+
+    if (rChild < job.processes) {
+        job.messages[i].push_back({rChild, countP2pMessage, cost});
+        fillTree(job, rChild, countP2pMessage, cost);
+    }
 
 }
 

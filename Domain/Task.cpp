@@ -7,7 +7,7 @@
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(sample_simulator, "Messages specific for this simulator");
 
-Task::Task(int id) : id(id) {
+Task::Task(unsigned long long id) : id(id) {
 
 }
 
@@ -23,7 +23,7 @@ void Task::operator()() {
             delete sender_time;
 
             action.time = comm_time;
-            XBT_INFO("%s a message from %s in %f sec", myMB->get_cname(), mailbox->get_cname(), comm_time);
+            //XBT_INFO("%s a message from %s in %f sec", myMB->get_cname(), mailbox->get_cname(), comm_time);
         } else if (action.actionType == Action::ActionType::PUT) {
             auto *payload = new double(simgrid::s4u::Engine::get_clock());
             mailbox->put(payload, action.cost);
@@ -59,7 +59,7 @@ int Task::getId() const {
     return id;
 }
 
-std::map<int, Action>& Task::getActions() {
+std::map<unsigned long long int, Action> & Task::getActions() {
     return actions;
 }
 
@@ -75,7 +75,7 @@ double Task::getTime() const {
     return time;
 }
 
-const std::map<int, Action> &Task::getActions() const {
+const std::map<unsigned long long, Action> & Task::getActions() const {
     return actions;
 }
 
