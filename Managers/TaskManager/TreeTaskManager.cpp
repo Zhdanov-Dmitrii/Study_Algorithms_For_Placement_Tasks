@@ -5,9 +5,7 @@ TreeTaskManager& TreeTaskManager::getInstance() {
     return instance;
 }
 
-TreeTaskManager::TreeTaskManager() : treeTopology(TreeTopology("fatTree-", "", 4096, 6, 4, 4)){
-
-}
+TreeTaskManager::TreeTaskManager() {}
 
 void TreeTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
     std::vector<Task> tasks;
@@ -63,33 +61,23 @@ void TreeTaskManager::createTaskInAdvancedPlacementMode(std::shared_ptr<Job> &jo
 
 }
 
-void TreeTaskManager::createTasks(Job job) {
+void TreeTaskManager::createTasks(Job job, Topology& topology) {
     auto jobPtr = std::make_shared<Job>(std::move(job));
     jobs.emplace(jobPtr->id, jobPtr);
 
     switch (jobPtr->placementMode) {
         case PlacementMode::SIMPLE:
-            createTaskInSimplePlacementMode(jobPtr, treeTopology);
+            createTaskInSimplePlacementMode(jobPtr, topology);
             break;
         case PlacementMode::OPTIMAL:
-            createTaskInOptimalPlacementMode(jobPtr, treeTopology);
+            createTaskInOptimalPlacementMode(jobPtr, topology);
             break;
         case PlacementMode::ADVANCED:
-            createTaskInAdvancedPlacementMode(jobPtr, treeTopology);
+            createTaskInAdvancedPlacementMode(jobPtr, topology);
             break;
         default:
-            createTaskInRandomPlacementMode(jobPtr, treeTopology);
+            createTaskInRandomPlacementMode(jobPtr, topology);
     }
-}
-
-void TreeTaskManager::clear() {
-    tasks.clear();
-    jobs.clear();
-
-    idAction = 0;
-    idTask = 0;
-
-    treeTopology = TreeTopology("fatTree-", "", 4096, 6, 4, 4);
 }
 
 void TreeTaskManager::place(std::weak_ptr<Switch> sw, int nodes, int &indTask, TreeTopology& tree, std::vector<Task>& tasks) {

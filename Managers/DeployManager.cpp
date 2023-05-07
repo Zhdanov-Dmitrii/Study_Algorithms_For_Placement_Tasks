@@ -44,11 +44,11 @@ void DeployManager::run() {
         }
         double timePlace = (double)(clock()-start)/CLOCKS_PER_SEC;
 
-        JobManager::TopologyType topologyType = session["topologyType"];
+        TopologyManager::TopologyType topologyType = session["topologyType"];
         start = clock();
         jobManager.run(topologyType);
         double timeRun = (double)(clock()-start)/CLOCKS_PER_SEC;
-        std::cout << "; TP = " << timePlace << "; TR = " << timeRun << std::endl;
+        std::cout << "; create Job = " << timePlace << "; run = " << timeRun << std::endl;
 
         saveResult();
         clearState();
@@ -66,7 +66,6 @@ void DeployManager::saveResult() {
 
 void DeployManager::clearState() {
     torusTaskManager.clear();
-    treeTaskManager.clear();
     jobManager.clear();
     simGridManager.killAllActor();
 }

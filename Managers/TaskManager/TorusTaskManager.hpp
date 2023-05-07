@@ -13,8 +13,6 @@ class TorusTaskManager : public TaskManager {
     TorusTaskManager();
     TorusTaskManager(TorusTaskManager&) = default;
     TorusTaskManager& operator=(TorusTaskManager&) = default;
-
-    TorusTopology torusTopology;
 protected:
     void createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
     void createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
@@ -22,9 +20,7 @@ protected:
 public:
     static TorusTaskManager& getInstance();
 
-    void createTasks(Job job) override;
-
-    void clear() override;
+    void createTasks(Job job, Topology& topology) override;
 };
 
 

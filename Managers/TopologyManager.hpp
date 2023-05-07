@@ -8,18 +8,14 @@
 
 class TopologyManager {
     /// Singleton
-    TopologyManager();
+    TopologyManager() = default;
     TopologyManager(const TopologyManager&);
-    TopologyManager& operator=(TopologyManager&);
-
-    TorusTopology torus;
-    TreeTopology fatTree;
-    TreeTopology thinTree;
+    TopologyManager& operator=(TopologyManager&) = delete;
 public:
     enum TopologyType {
-        TORUS,
-        FAT_TREE,
-        THIN_TREE
+        TORUS_TOPOLOGY,
+        FAT_TREE_TOPOLOGY,
+        THIN_TREE_TOPOLOGY
     };
 
     static TopologyManager& getInstance();

@@ -9,6 +9,7 @@
 #include "../Domain/Job.hpp"
 #include "TaskManager/TorusTaskManager.hpp"
 #include "TaskManager/TreeTaskManager.hpp"
+#include "TopologyManager.hpp"
 
 #include "SimGridManager.hpp"
 #include "../Utils/Point2dUtils.hpp"
@@ -27,6 +28,7 @@ class JobManager {
     TorusTaskManager& torusTaskManager;
     TreeTaskManager& treeTaskManager;
     SimGridManager& simGridManager;
+    TopologyManager& topologyManager;
 
     inline static int idJob = 0;
 
@@ -38,14 +40,10 @@ class JobManager {
 
     using JobType = Job::JobType;
     using PlacementMode = Job::PlacementMode;
+    using TopologyType = TopologyManager::TopologyType;
 
     void fillTree(Job& job, int i, int countP2pMessage, unsigned long cost);
 public:
-    enum TopologyType {
-        TORUS_TOPOLOGY,
-        FAT_TREE_TOPOLOGY,
-        THIN_TREE_TOPOLOGY
-    };
 
     static JobManager& getInstance();
 

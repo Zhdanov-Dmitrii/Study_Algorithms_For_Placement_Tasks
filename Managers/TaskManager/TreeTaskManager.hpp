@@ -13,7 +13,6 @@ class TreeTaskManager : public TaskManager{
     TreeTaskManager& operator=(TreeTaskManager&) = default;
 
     using Switch = TreeTopology::Switch;
-    TreeTopology treeTopology;
 
     void place(std::weak_ptr<Switch> sw, int nodes, int &indTask, TreeTopology& tree, std::vector<Task>& tasks);
 
@@ -22,8 +21,7 @@ protected:
     void createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
 public:
     static TreeTaskManager& getInstance();
-    void createTasks(Job job) override;
-    void clear() override;
+    void createTasks(Job job, Topology& topology) override;
 };
 
 

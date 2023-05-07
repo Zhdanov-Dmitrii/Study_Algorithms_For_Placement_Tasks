@@ -349,3 +349,11 @@ void TaskManager::fillTree(std::vector<Task> &tasks, int x, bool flag) {
         fillTree(tasks, getRightChild(x), !flag);
     }
 }
+
+void TaskManager::clear() {
+    tasks.clear();
+    jobs.clear();
+
+    idAction = 0;
+    idTask = 0;
+}

@@ -1,28 +1,28 @@
 #include "TorusTaskManager.hpp"
 
-TorusTaskManager::TorusTaskManager() : torusTopology(TorusTopology("torusNode-", "", 16, 16, 16)) {}
+TorusTaskManager::TorusTaskManager() {}
 
 TorusTaskManager& TorusTaskManager::getInstance() {
     static TorusTaskManager instance;
     return instance;
 }
 
-void TorusTaskManager::createTasks(Job job) {
+void TorusTaskManager::createTasks(Job job, Topology& topology) {
     auto jobPtr = std::make_shared<Job>(std::move(job));
     jobs.emplace(jobPtr->id, jobPtr);
 
     switch (jobPtr->placementMode) {
         case PlacementMode::SIMPLE:
-            createTaskInSimplePlacementMode(jobPtr, torusTopology);
+            createTaskInSimplePlacementMode(jobPtr, topology);
             break;
         case PlacementMode::OPTIMAL:
-            createTaskInOptimalPlacementMode(jobPtr, torusTopology);
+            createTaskInOptimalPlacementMode(jobPtr, topology);
             break;
         case PlacementMode::ADVANCED:
-            createTaskInAdvancedPlacementMode(jobPtr, torusTopology);
+            createTaskInAdvancedPlacementMode(jobPtr, topology);
             break;
         default:
-            createTaskInRandomPlacementMode(jobPtr, torusTopology);
+            createTaskInRandomPlacementMode(jobPtr, topology);
     }
 }
 
@@ -140,16 +140,6 @@ void TorusTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jo
 
 void TorusTaskManager::createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology &topology) {
 
-}
-
-void TorusTaskManager::clear() {
-    tasks.clear();
-    jobs.clear();
-
-    idAction = 0;
-    idTask = 0;
-
-    torusTopology = TorusTopology("torusNode-", "", 16, 16, 16);
 }
 
 

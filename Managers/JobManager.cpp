@@ -4,13 +4,35 @@
 JobManager::JobManager()
     : torusTaskManager(TorusTaskManager::getInstance()),
       treeTaskManager(TreeTaskManager::getInstance()),
-      simGridManager(SimGridManager::getInstance()) {
-
-}
+      simGridManager(SimGridManager::getInstance()),
+      topologyManager(TopologyManager::getInstance()) {}
 
 JobManager& JobManager::getInstance() {
     static JobManager instance;
     return instance;
+}
+
+void JobManager::run(TopologyType topologyType) {
+    if (topologyType == TopologyType::TORUS_TOPOLOGY) {
+        TorusTopology torus = topologyManager.getTorusTopology();
+        for (auto &[id, job] : jobs) {
+            torusTaskManager.createTasks(job, torus);
+        }
+    } else if (topologyType == TopologyType::FAT_TREE_TOPOLOGY) {
+        TreeTopology fatTree = topologyManager.getFatTreeTopology();
+        for (auto &[id, job] : jobs) {
+            treeTaskManager.createTasks(job, fatTree);
+        }
+    } else {
+        TreeTopology thinTree = topologyManager.getThinTreeTopology();
+        for (auto &[id, job] : jobs) {
+            treeTaskManager.createTasks(job, thinTree);
+        }
+    }
+
+    simGridManager.registerTasks();
+    simGridManager.run();
+    TaskManager::calcJobTime();
 }
 
 void JobManager::createJob(JobType jobType, PlacementMode placementMode, bool isValid, int processes,
@@ -43,22 +65,6 @@ void JobManager::createJob(JobType jobType, PlacementMode placementMode, bool is
     }
 
     jobs.emplace(job.id ,std::move(job));
-}
-
-void JobManager::run(TopologyType topologyType) {
-    TaskManager& manager = torusTaskManager;
-    switch (topologyType) {
-        case TopologyType::TORUS_TOPOLOGY: manager = torusTaskManager;
-        case TopologyType::FAT_TREE_TOPOLOGY: manager = treeTaskManager;
-    }
-
-    for (auto &[id, job] : jobs) {
-        manager.createTasks(job);
-    }
-
-    simGridManager.registerTasks();
-    simGridManager.run();
-    TaskManager::calcJobTime();
 }
 
 void JobManager::createFullJob(Job &job, int countP2pMessage, unsigned long cost) {

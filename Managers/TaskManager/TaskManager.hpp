@@ -20,7 +20,7 @@ protected:
     inline static unsigned long long idAction;
 
     inline static std::map<unsigned long long, Task> tasks;
-    inline static std::unordered_map<unsigned long long, std::shared_ptr<Job>> jobs; //todo разные айди для
+    inline static std::unordered_map<unsigned long long, std::shared_ptr<Job>> jobs;
 
     void createTaskInSimplePlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology);
     virtual void createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) = 0;
@@ -44,13 +44,13 @@ public:
 
     static const std::unordered_map<unsigned long long int, std::shared_ptr<Job>> & getAllJobs();
 
-    virtual void createTasks(Job job) = 0;
+    virtual void createTasks(Job job, Topology& topology) = 0;
 
     static void updateTimeTask(const Task& task);
 
     static void calcJobTime();
 
-    virtual void clear() = 0;
+    void clear();
 
     static void removeInvalidJobs();
 };

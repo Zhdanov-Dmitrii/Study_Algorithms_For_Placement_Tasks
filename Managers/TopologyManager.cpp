@@ -9,19 +9,14 @@ TopologyManager &TopologyManager::getInstance() {
     return instance;
 }
 
-TopologyManager::TopologyManager():
-    torus(TorusTopology("torusNode-", "", 16, 16, 16)),
-    fatTree(TreeTopology("fatTree-", "", 4096, 6, 4, 4)),
-    thinTree(TreeTopology("thinTree-","",4096, 6, 4, 2)){}
-
 TorusTopology TopologyManager::getTorusTopology() {
-    return torus;
+    return {"torusNode-", "", 16, 16, 16};
 }
 
 TreeTopology TopologyManager::getFatTreeTopology() {
-    return fatTree;
+    return {"fatTree-", "", 4096, 6, 4, 4};
 }
 
 TreeTopology TopologyManager::getThinTreeTopology() {
-    return thinTree;
+    return {"thinTree-","",4096, 6, 4, 2};
 }
