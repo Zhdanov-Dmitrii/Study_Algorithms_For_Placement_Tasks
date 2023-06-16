@@ -23,7 +23,6 @@ void DeployManager::run() {
     std::ifstream ifs(path);
     Json json = Json::parse(ifs);
 
-    clock_t start = clock();
     for (auto &session : json) {
         for (auto &job : session["jobs"]) {
             JobType jobType = job["jobType"];
@@ -35,20 +34,13 @@ void DeployManager::run() {
             std::string resPath = job["path"];
 
             if (!resPath.empty())
-                std::cout << resPath << " " << cost << " ";
-
-            if (!resPath.empty())
                 removeInvalidJob();
 
             jobManager.createJob(jobType, placementMode, isValid, processes, countP2pMessage, cost, resPath);
         }
-        double timePlace = (double)(clock()-start)/CLOCKS_PER_SEC;
 
         TopologyManager::TopologyType topologyType = session["topologyType"];
-        start = clock();
         jobManager.run(topologyType);
-        double timeRun = (double)(clock()-start)/CLOCKS_PER_SEC;
-        std::cout << "; create Job = " << timePlace << "; run = " << timeRun << std::endl;
 
         saveResult();
         clearState();

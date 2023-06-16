@@ -1,13 +1,15 @@
 #include "TorusTaskManager.hpp"
+#include <iostream>
+#include <random>
 
 TorusTaskManager::TorusTaskManager() {}
 
-TorusTaskManager& TorusTaskManager::getInstance() {
+TorusTaskManager &TorusTaskManager::getInstance() {
     static TorusTaskManager instance;
     return instance;
 }
 
-void TorusTaskManager::createTasks(Job job, Topology& topology) {
+void TorusTaskManager::createTasks(Job job, Topology &topology) {
     auto jobPtr = std::make_shared<Job>(std::move(job));
     jobs.emplace(jobPtr->id, jobPtr);
 
@@ -26,27 +28,69 @@ void TorusTaskManager::createTasks(Job job, Topology& topology) {
     }
 }
 
-void TorusTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology &topology) {
+void TorusTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    std::vector<int> indHost = searchHostForOptimalPlacement(jobPtr, topology);
+    std::shuffle(indHost.begin(), indHost.begin() + indHost.size() / 2, std::mt19937(std::random_device()()));
+
     std::vector<Task> tasks;
     tasks.reserve(jobPtr->processes);
-    for(int i = 0; i <jobPtr->processes; ++i) {
+
+    auto &mesh = dynamic_cast<MeshTopology &>(topology); //У нас гарантировано приходит сетчатая топология
+
+    for (int i = 0; i < jobPtr->processes; ++i) {
         Task task(idTask++);
         task.setJob(jobPtr);
+        task.setHostName(mesh.getHost(indHost[i]));
+
         tasks.push_back(std::move(task));
+
+        mesh.removeFreeHost(indHost[i]);
     }
 
-    auto& torus = dynamic_cast<TorusTopology &>(topology); //У нас гарантировано приходит топология тора
+    fillActions(tasks);
+    addTasks(tasks);
+}
 
-    std::vector<std::pair<int,int>> freeSegments; //стек сегментов [длина, индекс начала]
+void TorusTaskManager::createTaskInAdvancedPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    std::vector<int> indHost = searchHostForOptimalPlacement(jobPtr, topology);
+    std::vector<Task> tasks;
+    tasks.reserve(jobPtr->processes);
+
+    auto &mesh = dynamic_cast<MeshTopology &>(topology); //У нас гарантировано приходит топология тора
+
+    NeighborTree neighborTree = MeshTopology::createNeighborTree(indHost, mesh);
+    mappingJob(jobPtr, neighborTree, indHost);
+
+    for (int i = 0; i < jobPtr->processes; ++i) {
+        Task task(idTask++);
+        task.setJob(jobPtr);
+        task.setHostName(mesh.getHost(indHost[i]));
+
+        tasks.push_back(std::move(task));
+
+        mesh.removeFreeHost(indHost[i]);
+    }
+
+    fillActions(tasks);
+    addTasks(tasks);
+}
+
+std::vector<int> TorusTaskManager::searchHostForOptimalPlacement(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    std::vector<int> indHosts;
+    indHosts.reserve(jobPtr->processes);
+
+    auto &mesh = dynamic_cast<MeshTopology &>(topology); //У нас гарантировано приходит топология тора
+
+    std::vector<std::pair<int, int>> freeSegments; //стек сегментов [длина, индекс начала]
     int currCount = 0;
     int start = 0;
     bool flag = false; //Для вставки последнего элемента
-    for (int i = 0; i < torus.getHosts(); ++i) {
-        if (!torus.isFreeHostByNumHilbert(i)) {
+    for (int i = 0; i < mesh.getHosts(); ++i) {
+        if (!mesh.isFreeHostByNumHilbert(i)) {
             if (currCount != 0) {
                 freeSegments.emplace_back(currCount, start);
             }
-            start = i+1;
+            start = i + 1;
             currCount = 0;
             flag = false;
         } else {
@@ -55,7 +99,7 @@ void TorusTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jo
         }
     }
 
-    if(flag) {
+    if (flag) {
         freeSegments.emplace_back(currCount, start);
     }
 
@@ -94,53 +138,15 @@ void TorusTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jo
         ++resI;
     }
     --resI;
-    int indTask = 0;
-    while (processes > 0 && resI+1 < int(freeSegments.size())) {
+    while (processes > 0 && resI + 1 < int(freeSegments.size())) {
         ++resI;
         auto seg = freeSegments[resI];
         for (int i = 0; i < seg.first && processes > 0; ++i) {
             --processes;
-            tasks[indTask++].setHostName(torus.getHostByNumHilbert(seg.second+i));
-            torus.removeFreeHost(torus.getHostNumByNumHilbert(seg.second+i));
+            indHosts.push_back(mesh.getHostNumByNumHilbert(seg.second + i));
         }
-
     }
 
-//    std::sort(freeSegments.begin(), freeSegments.end());
-//
-//    int indTask = 0;
-//    int processes = jobPtr->processes;
-//    while (processes) {
-//        if (freeSegments.empty())
-//            throw std::out_of_range("no free hosts in torus topology");
-//
-//        auto itSegment = std::upper_bound(freeSegments.begin(), freeSegments.end(), std::make_pair(processes, 0),
-//                                           [](const std::pair<int,int>&a, const std::pair<int,int>&b){
-//            return a.first < b.first;
-//        });
-//        if (itSegment == freeSegments.end()) --itSegment;
-//
-//        auto [count, ind] = *itSegment;
-//        while (processes && count) {
-//            tasks[indTask].setHostName(torus.getHostByNumHilbert(ind));
-//            torus.removeFreeHost(torus.getHostNumByNumHilbert(ind));
-//
-//            ++ind;
-//            ++indTask;
-//            --count;
-//            --processes;
-//        }
-//
-//        freeSegments.erase(itSegment);
-//    }
-
-    fillActions(tasks);
-    addTasks(tasks);
+    return indHosts;
 }
-
-void TorusTaskManager::createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology &topology) {
-
-}
-
-
 

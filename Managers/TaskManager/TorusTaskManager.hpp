@@ -17,6 +17,7 @@ protected:
     void createTaskInOptimalPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
     void createTaskInAdvancedPlacementMode(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
 
+    std::vector<int> searchHostForOptimalPlacement(std::shared_ptr<Job>& jobPtr, Topology& topology) override;
 public:
     static TorusTaskManager& getInstance();
 

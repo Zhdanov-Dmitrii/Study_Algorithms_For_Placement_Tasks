@@ -1,7 +1,7 @@
 #include "TorusTopology.hpp"
 
 TorusTopology::TorusTopology(const std::string_view prefix, const std::string_view suffix, int sizeX, int sizeY, int sizeZ)
-        : Topology(prefix, suffix, sizeX * sizeY * sizeZ), sizeX(sizeX), sizeY(sizeY), sizeZ(sizeZ) {
+        : MeshTopology(prefix, suffix, sizeX * sizeY * sizeZ), sizeX(sizeX), sizeY(sizeY), sizeZ(sizeZ) {
 
     hilbertCurve.reserve(sizeX * sizeY * sizeZ);
     buildHilbertCurve();
@@ -183,18 +183,174 @@ void TorusTopology::calcHilbertCurve(int x, int y, int z,
     }
 }
 
-const std::vector<int> &TorusTopology::getHilbertCurve() const {
-    return hilbertCurve;
+Point3D TorusTopology::getPointByNum(int i) const{
+    Point3D res{};
+    res.x = i % sizeX;
+    i /= sizeX;
+    res.y = i % sizeY;
+    i /= sizeY;
+    res.z = i;
+
+    return res;
 }
 
-bool TorusTopology::isFreeHostByNumHilbert(int i) {
-    return isFreeHost(hilbertCurve[i]);
-}
+//NeighborTree TorusTopology::createNeighborTree(std::vector<int>& indHosts, const TorusTopology& topology) {
+////    return createNeighborKruskal(indHosts, topology);
+////
+////    CSR csr;
+////    csr.nvtx = indHosts.size();
+////    csr.xadj.reserve(indHosts.size()+1);
+////    csr.adjncy.reserve(indHosts.size()*indHosts.size());
+////
+////    csr.xadj.push_back(0);
+////    int x = 0;
+////    for (int i = 0; i < indHosts.size(); ++i) {
+////        for (int j = 0; j < indHosts.size(); ++j) {
+////            if (i == j) continue;
+////            Point3D pi = topology.getPointByNum(i);
+////            Point3D pj = topology.getPointByNum(j);
+////
+////            csr.adjncy.push_back(Point3dUtils::getDistance(pi, pj));
+////            ++x;
+////        }
+////        csr.xadj.push_back(x);
+////    }
+////    csr.bipatition();
+////
+////    std::vector<int> map;
+////    map.reserve(csr.nvtx);
+////    for (int i = 0; i < csr.nvtx; ++i)
+////        map.push_back(indHosts[i]);
+////
+////    NeighborTree res;
+////    res.root = std::make_shared<Neighbor>(createNeighborTree(indHosts, csr, map));
+//
+//
+//    std::sort(indHosts.begin(), indHosts.end());
+//    NeighborTree res;
+//    res.root = std::make_shared<Neighbor>(createNeighbor(indHosts, 0, indHosts.size()));
+//
+//    return res;
+//}
+//
+//TorusTopology::Neighbor TorusTopology::createNeighborTree(const std::vector<int> &indHosts, CSR &csr,
+//                                                          const std::vector<int>& map) {
+//    Neighbor neighbor;
+//    neighbor.hostCount = csr.nvtx;
+//
+//    ///Выход
+//    if (neighbor.hostCount <= 2) {
+//        neighbor.isLeaf = true;
+//        for (int i = 0; i < neighbor.hostCount; ++i)
+//            neighbor.hosts.push_back(map.at(i));
+//
+//        return neighbor;
+//    }
+//    neighbor.isLeaf = false;
+//
+//
+//    for (int i = 0; i < 2; ++i){
+//        std::vector<int> newMap;
+//        for (int j = 0; j < csr.nvtx; ++j) {
+//            if (csr.parts[j] == i)
+//                newMap.push_back(map[j]);
+//        }
+//
+//
+//        CSR newCSR = csr.getCSRFromPart(i);
+//        newCSR.bipatition();
+//        neighbor.neighbors.push_back(std::make_shared<Neighbor>(createNeighborTree(indHosts, newCSR, newMap)));
+//    }
+//
+//    return neighbor;
+//}
+//
+//TorusTopology::Neighbor TorusTopology::createNeighbor(const std::vector<int> &indHosts, int l, int r) {
+//    Neighbor neighbor;
+//    neighbor.hostCount = r-l;
+//    if (r-l <= 2) {
+//        neighbor.isLeaf = true;
+//        for (int i = l; i < r; ++i)
+//            neighbor.hosts.push_back(indHosts[i]);
+//
+//        return neighbor;
+//    }
+//
+//    neighbor.isLeaf = false;
+//    neighbor.neighbors.push_back(std::make_shared<Neighbor>(createNeighbor(indHosts,l,(l+r)/2)));
+//    neighbor.neighbors.push_back(std::make_shared<Neighbor>(createNeighbor(indHosts,(l+r)/2,r)));
+//
+//    return neighbor;
+//}
+//
+//NeighborTree TorusTopology::createNeighborKruskal(std::vector<int> &indHosts, const TorusTopology &topology) {
+//    struct Edge{
+//        int a, b;
+//        int d;
+//    };
+//
+//    std::vector<std::shared_ptr<Neighbor>> parents;
+//    parents.reserve(indHosts.size());
+//    for (int i = 0; i < indHosts.size(); ++i){
+//        auto t = std::make_shared<Neighbor>(Neighbor());
+//        t->hostCount = 1;
+//        t->isLeaf = true;
+//        t->hosts = {indHosts[i]};
+//        parents.push_back(t);
+//    }
+//
+//    std::vector<Edge> edges;
+//    edges.reserve(indHosts.size() * indHosts.size());
+//    for (int i = 0; i < indHosts.size(); ++i) {
+//        for (int j = 0; j < indHosts.size(); ++j) {
+//            if (i == j) continue;
+//            Point3D pi = topology.getPointByNum(indHosts[i]);
+//            Point3D pj = topology.getPointByNum(indHosts[j]);
+//            int d = Point3dUtils::getDistance(pi, pj);
+//
+//            edges.push_back({i, j, d});
+//        }
+//    }
+//
+//    std::sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) { return a.d < b.d; });
+//
+//    DisjointSet disjointSet(indHosts.size());
+//    for (auto &e : edges) {
+//        int indPA = disjointSet.find(e.a);
+//        int indPB = disjointSet.find(e.b);
+//
+//        if (indPA == indPB)
+//            continue;
+//
+//        std::shared_ptr<Neighbor> a = parents[indPA];
+//        std::shared_ptr<Neighbor> b = parents[indPB];
+//
+//        auto node = std::make_shared<Neighbor>(Neighbor());
+//        node->isLeaf = false;
+//        node->hostCount = a->hostCount + b->hostCount;
+//        node->neighbors.push_back(a);
+//        node->neighbors.push_back(b);
+//
+//        parents[e.a] = node;
+//        parents[e.b] = node;
+//
+//        disjointSet.union_set(indPA, indPB);
+//        parents[disjointSet.find(indPA)] = node;
+//    }
+//
+//    NeighborTree res;
+//    for (auto& p : parents) {
+//        if (p->hostCount == indHosts.size()) {
+//            res.root = p;
+//            break;
+//        }
+//    }
+//
+//    if (!res.root) {
+//        throw std::runtime_error("failed to build a neighbor tree");
+//    }
+//
+//    return res;
+//}
 
-std::string_view TorusTopology::getHostByNumHilbert(int i) {
-    return getHost(hilbertCurve[i]);
-}
 
-int TorusTopology::getHostNumByNumHilbert(int i) {
-    return hilbertCurve[i];
-}

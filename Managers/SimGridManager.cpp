@@ -6,7 +6,8 @@ SimGridManager::SimGridManager()
 }
 
 void SimGridManager::registerTasks() {
-    for (auto& [id, task] : TaskManager::getAllTasks()) {
+    for (auto& task : TaskManager::getAllTasks()) {
+        task.setEngine(engine);
         simgrid::s4u::Actor::create(task.getHostName(), engine->host_by_name(task.getHostName()), task);
     }
 }

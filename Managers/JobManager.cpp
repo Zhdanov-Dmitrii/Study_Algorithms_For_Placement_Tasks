@@ -13,20 +13,32 @@ JobManager& JobManager::getInstance() {
 }
 
 void JobManager::run(TopologyType topologyType) {
-    if (topologyType == TopologyType::TORUS_TOPOLOGY) {
-        TorusTopology torus = topologyManager.getTorusTopology();
+
+    std::shared_ptr<Topology> topology;
+    std::shared_ptr<TaskManager> taskManager;
+    switch (topologyType) {
+        case TopologyManager::TORUS_TOPOLOGY:
+            topology = std::make_shared<TorusTopology>(topologyManager.getTorusTopology());
+            break;
+        case TopologyType::GRID_TOPOLOGY:
+            topology = std::make_shared<GridTopology>(topologyManager.getGridTopology());
+
+            break;
+        case TopologyType::FAT_TREE_TOPOLOGY:
+            topology = std::make_shared<TreeTopology>(topologyManager.getFatTreeTopology());
+            break;
+        case TopologyType::THIN_TREE_TOPOLOGY:
+            topology = std::make_shared<TreeTopology>(topologyManager.getThinTreeTopology());
+            break;
+    }
+
+    if (topologyType == TopologyType::TORUS_TOPOLOGY || topologyType == TopologyType::GRID_TOPOLOGY) {
         for (auto &[id, job] : jobs) {
-            torusTaskManager.createTasks(job, torus);
+            torusTaskManager.createTasks(job, *topology);
         }
-    } else if (topologyType == TopologyType::FAT_TREE_TOPOLOGY) {
-        TreeTopology fatTree = topologyManager.getFatTreeTopology();
+    }else if (topologyType == TopologyType::FAT_TREE_TOPOLOGY || topologyType == TopologyType::THIN_TREE_TOPOLOGY) {
         for (auto &[id, job] : jobs) {
-            treeTaskManager.createTasks(job, fatTree);
-        }
-    } else {
-        TreeTopology thinTree = topologyManager.getThinTreeTopology();
-        for (auto &[id, job] : jobs) {
-            treeTaskManager.createTasks(job, thinTree);
+            treeTaskManager.createTasks(job, *topology);
         }
     }
 
@@ -187,6 +199,10 @@ void JobManager::fillTree(Job &job, int i, int countP2pMessage, unsigned long co
         fillTree(job, rChild, countP2pMessage, cost);
     }
 
+}
+
+std::map<int, Job>& JobManager::getJobs() {
+    return jobs;
 }
 
 

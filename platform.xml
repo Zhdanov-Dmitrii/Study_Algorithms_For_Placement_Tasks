@@ -7,6 +7,11 @@
                  speed="1Gf" bw="125MBps" lat="50us"
                  loopback_bw="125MBps" loopback_lat="100us"/>
 
+        <cluster id="GRID" topology="TORUS" topo_parameters="64, 64"
+                 prefix="gridNode-" radical="0-4095" suffix=""
+                 speed="1Gf" bw="125MBps" lat="50us"
+                 loopback_bw="125MBps" loopback_lat="100us"/>
+
         <cluster id="FATTREE" topology="FAT_TREE" topo_parameters="6;4,4,4,4,4,4;1,4,4,4,4,4;1,1,1,1,1,1"
         prefix="fatTree-" radical="0-4095" suffix=""
         speed="1Gf" bw="125MBps" lat="50us"

@@ -12,11 +12,12 @@
 #include "Job.hpp"
 
 class Task {
-    const unsigned long long id;
+    unsigned long long id;
     std::string hostName;
     std::map<unsigned long long, Action> actions;
     std::shared_ptr<Job> job;
     double time = -1;
+    simgrid::s4u::Engine* engine;
 
     void callback() const;
 public:
@@ -31,6 +32,7 @@ public:
     void addAction(Action&& action);
     void setJob(const std::shared_ptr<Job>& jobPtr);
     void setTime(double time);
+    void setEngine(simgrid::s4u::Engine* engine);
 
     int getId() const;
     double getTime() const;

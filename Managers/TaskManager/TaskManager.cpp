@@ -8,7 +8,7 @@ const std::unordered_map<unsigned long long int, std::shared_ptr<Job>> & TaskMan
     return jobs;
 }
 
-const std::map<unsigned long long int, Task> & TaskManager::getAllTasks() {
+std::vector<Task> & TaskManager::getAllTasks() {
     return tasks;
 }
 
@@ -28,15 +28,23 @@ void TaskManager::createTaskInSimplePlacementMode(std::shared_ptr<Job>& jobPtr, 
         tasks.push_back(std::move(task));
     }
 
-    int indTask = 0;
-    for(int i = 0; i < topology.getHosts() && indTask < jobPtr->processes; ++i) {
+    std::vector<int> indHosts;
+    indHosts.reserve(jobPtr->processes);
+    for(int i = 0; i < topology.getHosts() && indHosts.size() < jobPtr->processes; ++i) {
         if(topology.isFreeHost(i)) {
-            tasks[indTask++].setHostName(topology.getHost(i));
-            topology.removeFreeHost(i);
+            indHosts.push_back(i);
         }
     }
+    std::shuffle(indHosts.begin(), indHosts.begin() + indHosts.size()/2, std::mt19937(std::random_device()()));
+
+    int indTask = 0;
+    for (auto i : indHosts) {
+        tasks[indTask++].setHostName(topology.getHost(i));
+        topology.removeFreeHost(i);
+    }
+
     if (indTask != jobPtr->processes) {
-        throw std::out_of_range("There is no place to place the task in the topology");
+        throw std::out_of_range("There is no place to searchHost the task in the topology");
     }
 
     fillActions(tasks);
@@ -72,63 +80,75 @@ void TaskManager::fillActions(std::vector<Task> &tasks) {
     if (job->messages.empty() || job->messages[0].empty()){
         return;
     }
-    if (job->jobType != JobType::CUBE) {
-        for (int countMessage = job->messages[0][0].count; countMessage >= 0; --countMessage) {
-            for (int i = 0; i < job->processes; ++i) {
-                for (auto &msg: job->messages[i]) {
-                    addAction(tasks, i, msg.process, msg.cost);
-                }
-            }
-        }
-    } else {
-        for (int countMessage = job->messages[0][0].count; countMessage >- 0; -- countMessage) {
-            auto cost = job->messages[0][0].cost;
-            int n = cbrt(job->processes);
-            for (int x = 0; x < n; ++x) {
-                for (int y = 0; y < n; ++y) {
-                    int z = 0;
-                    auto getNum = [n](const Point3D& p) -> int { return p.x + n * p.y + n*n*p.z; };
 
-                    ///По четным z
-                    for (z = x % 2; z < n; z += 2) {
-                        for (auto &msg: job->messages[getNum({x,y,z})]) {
-                            addAction(tasks, getNum({x,y,z}), msg.process, msg.cost);
-                        }
-                    }
-
-                    ///По нечетным z
-                    for (z = x % 2 + 1; z < n; z += 2) {
-                        for (auto &msg: job->messages[getNum({x,y,z})]) {
-                            addAction(tasks, getNum({x,y,z}), msg.process, msg.cost);
-                        }
-                    }
-                }
+    for (int countMessage = job->messages[0][0].count; countMessage >= 0; --countMessage) {
+        for (int i = 0; i < job->processes; ++i) {
+            for (auto &msg: job->messages[i]) {
+                addAction(tasks, i, msg.process, msg.cost);
             }
         }
     }
-
 }
 
+void TaskManager::mappingJob(std::shared_ptr<Job> &jobPtr, NeighborTree &neighborTree, std::vector<int> &res) {
+    CSR csr;
+    csr.nvtx = jobPtr->processes;
+    csr.xadj.push_back(0);
+
+    int x = 0;
+    for (auto i = 0; i < jobPtr->messages.size(); ++i) {
+        for (auto &m: jobPtr->messages[i]) {
+            csr.adjncy.push_back(m.process);
+            csr.adjwgt.push_back(m.count);
+            ++x;
+        }
+        csr.xadj.push_back(x);
+    }
+
+    std::vector<int> map(jobPtr->processes);
+    for (int i = 0; i < jobPtr->processes; ++i) {
+        map[i] = i;
+    }
+
+    mappingJob(csr, neighborTree.root, res, map);
+}
+
+void TaskManager::mappingJob(CSR &csr, std::shared_ptr<Neighbor> &root, std::vector<int>& res, std::vector<int>& map) {
+    if (csr.nvtx != root->hostCount)
+        throw std::runtime_error("csr.nvtx != root->hostCount");
+
+    while (root->neighbors.size() == 1)
+        root = root->neighbors.back();
+
+    if (root->isLeaf) {
+        for (int i = 0; i < map.size(); ++i) {
+            res[map[i]] = root->hosts[i];
+        }
+        return;
+    }
 
 
-//
-//    switch (tasks[0].getJob()->jobType) {
-//        case JobType::STAR:
-//            fillActionsForStar(tasks);
-//            break;
-//        case JobType::GRID:
-//            fillActionsForGrid(tasks);
-//            break;
-//        case JobType::CUBE:
-//            fillActionsForCube(tasks);
-//            break;
-//        case JobType::TREE:
-//            fillActionsForTree(tasks);
-//            break;
-//        default:
-//            fillActionsForFull(tasks);
-//    }
-//}
+
+    std::vector<int> childrenSize;
+    for (auto& child : root->neighbors) {
+        childrenSize.push_back(child->hostCount);
+    }
+
+    csr.partition(childrenSize);
+
+    for (int part = 0; part < root->neighbors.size(); ++part) {
+        CSR newCSR = csr.getCSRFromPart(part);
+
+        std::vector<int> newMap;
+        for (int i = 0; i < csr.nvtx; ++i) {
+            if (csr.parts[i] == part) {
+                newMap.push_back(map[i]);
+            }
+        }
+
+        mappingJob(newCSR, root->neighbors[part], res, newMap);
+    }
+}
 
 void TaskManager::fillActionsForFull(std::vector<Task> &tasks) {
     auto& job = tasks[0].getJob();
@@ -285,7 +305,7 @@ void TaskManager::fillActionsForTree(std::vector<Task> &tasks) {
 
 void TaskManager::addTasks(std::vector<Task> &tasks) {
     for (auto& task : tasks) {
-        this->tasks.emplace(task.getId(), std::move(task));
+        this->tasks.emplace_back(std::move(task));
     }
 }
 
@@ -295,7 +315,7 @@ void TaskManager::addAction(std::vector<Task> &tasks, int taskSender, int taskRe
 }
 
 void TaskManager::calcJobTime() {
-    for (auto &[id, task] : tasks) {
+    for (auto &task : tasks) {
         task.getJob()->time = std::max(task.getJob()->time, task.getTime());
     }
 }
@@ -310,12 +330,12 @@ void TaskManager::removeInvalidJobs() {
         jobs.erase(id);
 
     remId.clear();
-    for (auto &[id, task] : tasks)
+    for (auto &task : tasks)
         if(!task.getJob()->isValid)
-            remId.push_back(id);
+            remId.push_back(task.getId());
 
     for(auto id : remId)
-        tasks.erase(id);
+        tasks.erase(tasks.begin() + id);
 
 }
 
@@ -356,4 +376,8 @@ void TaskManager::clear() {
 
     idAction = 0;
     idTask = 0;
+}
+
+Task &TaskManager::getTask(unsigned long long int id) {
+    return tasks[id];
 }

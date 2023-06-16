@@ -56,6 +56,8 @@ public:
 
     void removeInvalidJob();
 
+    std::map<int, Job>& getJobs();
+
 
 };
 

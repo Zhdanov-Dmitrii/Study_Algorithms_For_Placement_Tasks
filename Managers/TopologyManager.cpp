@@ -20,3 +20,12 @@ TreeTopology TopologyManager::getFatTreeTopology() {
 TreeTopology TopologyManager::getThinTreeTopology() {
     return {"thinTree-","",4096, 6, 4, 2};
 }
+
+GridTopology TopologyManager::getGridTopology() {
+    return {"gridNode-", "", 64, 64};
+}
+
+TopologyManager::TopologyManager() : torus({"torusNode-", "", 16, 16, 16}), grid({"gridNode-", "", 64, 64}),
+                                     fatTree({"fatTree-", "", 4096, 6, 4, 4}), thinTree({"thinTree-","",4096, 6, 4, 2}){
+
+}

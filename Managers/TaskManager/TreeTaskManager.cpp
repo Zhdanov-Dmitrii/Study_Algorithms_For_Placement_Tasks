@@ -7,60 +7,6 @@ TreeTaskManager& TreeTaskManager::getInstance() {
 
 TreeTaskManager::TreeTaskManager() {}
 
-void TreeTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
-    std::vector<Task> tasks;
-    tasks.reserve(jobPtr->processes);
-    for(int i = 0; i < jobPtr->processes; ++i) {
-        Task task(idTask++);
-        task.setJob(jobPtr);
-        tasks.push_back(std::move(task));
-    }
-
-    auto& tree = dynamic_cast<TreeTopology &>(topology);
-
-
-    bool f = true;
-    int indTask = 0;
-    for (int indLvl = 0; indLvl < tree.getCountLevels() && f; ++indLvl) {
-        auto& level = tree.getLevel(indLvl);
-        for (int indSw = 0; indSw < level.size() && f; ++indSw) {
-            if (level[indSw]->freeNodes.size() < jobPtr->processes) continue;
-
-            if (jobPtr->processes == 256) {
-                int i =0;
-                ++i;
-            }
-            place(level[indSw], jobPtr->processes, indTask, tree, tasks);
-//            std::vector<int> deletedFreeHosts;
-//            deletedFreeHosts.reserve(jobPtr->processes);
-//            for (int freeHost : level[indSw]->freeNodes) {
-//                if (indTask >= tasks.size()) break;
-//
-//                tasks[indTask++].setHostName(tree.getHost(freeHost));
-//                deletedFreeHosts.push_back(freeHost);
-//            }
-//
-//            for (auto host : deletedFreeHosts) {
-//                tree.removeFreeHost(host);
-//            }
-
-
-            f = false;
-        }
-    }
-
-    if (indTask != jobPtr->processes) {
-        throw std::out_of_range("There is no place to place the task in the tree treeTopology");
-    }
-
-    fillActions(tasks);
-    addTasks(tasks);
-}
-
-void TreeTaskManager::createTaskInAdvancedPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
-
-}
-
 void TreeTaskManager::createTasks(Job job, Topology& topology) {
     auto jobPtr = std::make_shared<Job>(std::move(job));
     jobs.emplace(jobPtr->id, jobPtr);
@@ -80,20 +26,80 @@ void TreeTaskManager::createTasks(Job job, Topology& topology) {
     }
 }
 
-void TreeTaskManager::place(std::weak_ptr<Switch> sw, int nodes, int &indTask, TreeTopology& tree, std::vector<Task>& tasks) {
-    if (sw.lock()->down.empty()) {
-        std::vector<int> deletedFreeHosts;
-        for (int freeHost : sw.lock()->freeNodes) {
-            --nodes;
-            if (nodes < 0)
-                break;
+void TreeTaskManager::createTaskInOptimalPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    std::vector<Task> tasks;
+    tasks.reserve(jobPtr->processes);
 
-            tasks[indTask++].setHostName(tree.getHost(freeHost));
-            deletedFreeHosts.push_back(freeHost);
+    std::vector<int> indHosts = searchHostForOptimalPlacement(jobPtr, topology);
+
+    auto& tree = dynamic_cast<TreeTopology &>(topology);
+
+    for(int i = 0; i < jobPtr->processes; ++i) {
+        Task task(idTask++);
+        task.setJob(jobPtr);
+        task.setHostName(tree.getHost(indHosts[i]));
+        tasks.push_back(std::move(task));
+
+        tree.removeFreeHost(indHosts[i]);
+    }
+
+    fillActions(tasks);
+    addTasks(tasks);
+}
+
+void TreeTaskManager::createTaskInAdvancedPlacementMode(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    std::vector<int> indHost(jobPtr->processes);
+    NeighborTree neighborTree = searchNeighborTree(jobPtr, topology);
+    mappingJob(jobPtr, neighborTree, indHost);
+
+    auto& tree = dynamic_cast<TreeTopology &>(topology);
+
+    std::vector<Task> tasks;
+    for(int i = 0; i <jobPtr->processes; ++i) {
+        Task task(idTask++);
+        task.setJob(jobPtr);
+        task.setHostName(tree.getHost(indHost[i]));
+
+        tasks.push_back(std::move(task));
+
+        tree.removeFreeHost(indHost[i]);
+    }
+
+    fillActions(tasks);
+    addTasks(tasks);
+}
+
+std::vector<int> TreeTaskManager::searchHostForOptimalPlacement(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    std::vector<int> indHosts;
+    indHosts.reserve(jobPtr->processes);
+
+    auto& tree = dynamic_cast<TreeTopology &>(topology);
+
+    bool f = true;
+    int indTask = 0;
+    for (int indLvl = 0; indLvl < tree.getCountLevels() && f; ++indLvl) {
+        auto& level = tree.getLevel(indLvl);
+        for (int indSw = 0; indSw < level.size() && f; ++indSw) {
+            if (level[indSw]->freeNodes.size() < jobPtr->processes) continue;
+
+            searchHost(level[indSw], jobPtr->processes, indTask, tree, indHosts);
+            f = false;
         }
+    }
 
-        for (auto host : deletedFreeHosts) {
-            tree.removeFreeHost(host);
+    if (indTask != jobPtr->processes) {
+        throw std::out_of_range("There is no place to searchHost the task in the tree treeTopology");
+    }
+
+    return indHosts;
+}
+
+void TreeTaskManager::searchHost(std::weak_ptr<Switch> sw, int nodes, int &indTask, TreeTopology& tree, std::vector<int>& indHosts) {
+    if (sw.lock()->down.empty()) {
+        for (int freeHost : sw.lock()->freeNodes) {
+            if (--nodes < 0) break;
+
+            indHosts[indTask++] =freeHost;
         }
         return;
     }
@@ -109,8 +115,62 @@ void TreeTaskManager::place(std::weak_ptr<Switch> sw, int nodes, int &indTask, T
             return;
 
         int count = child->freeNodes.size();
-        place(child, std::min(count, nodes), indTask, tree, tasks);
+        searchHost(child, std::min(count, nodes), indTask, tree, indHosts);
         nodes -= std::min(count, nodes);
     }
 
 }
+
+NeighborTree TreeTaskManager::searchNeighborTree(std::shared_ptr<Job> &jobPtr, Topology &topology) {
+    NeighborTree res;
+
+    auto& tree = dynamic_cast<TreeTopology &>(topology);
+
+    bool f = true;
+    for (int indLvl = 0; indLvl < tree.getCountLevels() && f; ++indLvl) {
+        auto& level = tree.getLevel(indLvl);
+        for (int indSw = 0; indSw < level.size() && f; ++indSw) {
+            if (level[indSw]->freeNodes.size() < jobPtr->processes) continue;
+
+            res.root = std::make_shared<Neighbor>(searchNeighbor(level[indSw], jobPtr->processes, tree));
+            f = false;
+        }
+    }
+
+    return res;
+}
+
+TreeTaskManager::Neighbor TreeTaskManager::searchNeighbor(std::weak_ptr<Switch> sw, int nodes, TreeTopology& tree) {
+    Neighbor res;
+    res.hostCount = nodes;
+
+    if (sw.lock()->down.empty()) {
+        res.isLeaf = true;
+        for (int freeHost : sw.lock()->freeNodes) {
+            if (--nodes < 0) break;
+            res.hosts.push_back(freeHost);
+        }
+        return res;
+    }
+    res.isLeaf = false;
+
+    using SwitchPtr = std::shared_ptr<Switch>;
+    std::vector<SwitchPtr> sorted = sw.lock()->down;
+    std::sort(sorted.begin(), sorted.end(), [] (const SwitchPtr& a, const SwitchPtr& b) {
+        return a->freeNodes.size() > b->freeNodes.size();
+    });
+
+    for (auto &child : sorted) {
+        if (nodes <= 0)
+            break;
+
+        int count = child->freeNodes.size();
+        auto neighbor = std::make_shared<Neighbor>(searchNeighbor(child, std::min(count, nodes), tree));
+        res.neighbors.push_back(neighbor);
+        nodes -= std::min(count, nodes);
+    }
+
+    return res;
+}
+
+

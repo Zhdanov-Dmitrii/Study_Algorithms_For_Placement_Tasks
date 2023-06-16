@@ -47,3 +47,7 @@ Point3D Point3dUtils::getBehindPoint(const Point3D &point, const Point3D &rPoint
     res.z = point.z < rPoint.z ? point.z + 1 : lPoint.z;
     return res;
 }
+
+int Point3dUtils::getDistance(const Point3D &a, const Point3D &b) {
+    return abs(a.x-b.x) + abs(a.y-b.y) + abs(a.z-b.z);
+}
